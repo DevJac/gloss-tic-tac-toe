@@ -1,3 +1,4 @@
 .cabal-sandbox
 cabal.sandbox.config
-build
+dist
+gloss-tic-tac-toe.geany

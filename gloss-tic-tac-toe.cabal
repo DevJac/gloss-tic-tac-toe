@@ -5,7 +5,7 @@ name:                gloss-tic-tac-toe
 version:             0.1.0.0
 -- synopsis:            
 -- description:         
--- license:             
+license:             MIT
 license-file:        LICENSE
 author:              Devin Jacobs
 maintainer:          devrjacobs@gmail.com
@@ -17,6 +17,7 @@ cabal-version:       >=1.10
 
 executable gloss-tic-tac-toe
   main-is:             Main.hs
+  ghc-options:         -Wall -O2 -threaded
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8
