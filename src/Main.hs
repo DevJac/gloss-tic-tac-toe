@@ -4,6 +4,8 @@ import Graphics.Gloss.Data.Picture
 import Graphics.Gloss.Interface.Pure.Game
     (Event (EventKey), KeyState (Up), MouseButton (LeftButton), Key (MouseButton))
 import qualified Data.Map as M
+import Data.List (maximumBy)
+import Data.Ord (comparing)
 
 type Board = M.Map (Int, Int) Marker
 
@@ -39,19 +41,53 @@ renderBoard b =
                , y <- [0..2] ]
 
 currentPlayer :: Board -> Marker
-currentPlayer b | even markCount = X
-                | otherwise      = O
-    where
-        markCount = length $ filter (/=Blank) [getMarker b (x, y) | x <- [0..2], y <- [0..2]]
+currentPlayer b | odd $ length $ availableMoves b = X
+                | otherwise                      = O
+
+availableMoves :: Board -> [(Int, Int)]
+availableMoves b = [(x, y) | x <- [0..2], y <- [0..2], getMarker b (x, y) == Blank]
 
 handleInput :: Event -> Board -> Board
 handleInput (EventKey (MouseButton LeftButton) Up _ (x, y)) b =
-    if getMarker b (snap x, snap y) == Blank
-    then M.insert (snap x, snap y) (currentPlayer b) b
+    if getMarker b (snap x, snap y) == Blank && currentPlayer b == X
+    then M.insert (snap x, snap y) X b
     else b
     where
         snap = (+1) . max (-1) . min 1 . fromIntegral . floor . (/100) . (+50)
 handleInput _ b = b
 
 step :: Float -> Board -> Board
-step _ b = b
+step _ b =
+    if currentPlayer b == O && (not . null . availableMoves $ b)
+    then aiMove b
+    else b
+
+aiMove :: Board -> Board
+aiMove b = fst . maximumBy (comparing snd) . map (\m -> (m, aiMinMax m False)) $ map (\k -> M.insert k O b) (availableMoves b)
+
+aiMinMax :: Board -> Bool -> Int
+aiMinMax board maximize
+    | null $ availableMoves board = scoreBoard board
+    | otherwise =
+        let moves = map (\k -> aiMinMax (M.insert k O board) (not maximize)) (availableMoves board)
+        in if maximize then maximum moves else minimum moves
+
+allSame :: Eq a => [a] -> Bool
+allSame []     = True
+allSame (x:xs) = all (==x) xs
+
+scoreBoard :: Board -> Int
+scoreBoard b | any allSame $ map (map $ getMarker b) $ rows (3, 3) 3 = -1
+             | otherwise                                             =  0
+
+directions :: [(Int, Int) -> (Int, Int)]
+directions = [ (\(x, y) -> (x+1, y  ))
+             , (\(x, y) -> (x  , y+1))
+             , (\(x, y) -> (x+1, y+1))
+             , (\(x, y) -> (x+1, y-1))
+             ]
+
+rows :: (Int, Int) -> Int -> [[(Int, Int)]]
+rows (x, y) l =
+    filter (all (\(a, b) -> a >= 0 && b >= 0 && a < x && b < y))
+    [take l (iterate d (a, b)) | a <- [0..x-1], b <- [0..y-1], d <- directions]
